@@ -2,16 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchinfo import summary
-
-# Assuming these are your custom layers.
-# Ideally, for a full open source release, these dependencies should be clearly organized.
 from layers.Embed import DataEmbedding_inverted
 from layers.Transformer_EncDec import MyEncoderForLoss, MyEncoderLayerForloss
 
 class MovingAverage(nn.Module):
-    """
-    Moving average block to highlight the trend of time series.
-    """
     def __init__(self, channels, kernel_size=3):
         super(MovingAverage, self).__init__()
         self.avg = nn.Conv1d(
@@ -22,7 +16,6 @@ class MovingAverage(nn.Module):
             bias=False,
             groups=channels
         )
-        # Initialize with uniform weights for true moving average
         nn.init.constant_(self.avg.weight, 1.0 / kernel_size)
 
     def forward(self, x):
@@ -37,11 +30,9 @@ class LatentTemporalDecomposition(nn.Module):
     """
     def __init__(self, channels, trend_kernel=3, top_k=10, use_extra_channels=True):
         super(LatentTemporalDecomposition, self).__init__()
-
-        # Determine input channels based on marking (time features)
         self.input_channels = channels + 4 if use_extra_channels else channels
 
-        # Trend extraction layers (Multi-scale moving average)
+       
         self.trend_extractor_small = MovingAverage(self.input_channels, kernel_size=trend_kernel)
         self.trend_extractor_large = MovingAverage(self.input_channels, kernel_size=trend_kernel * 2 - 1)
 
@@ -73,17 +64,9 @@ class LatentTemporalDecomposition(nn.Module):
 
         # Inverse FFT to get smoothed seasonal component
         Trend_in_residual = torch.fft.irfft(xf)
-
-        # Refine seasonal component
         x_seasonal_raw = residual - Trend_in_residual
-
-        # 4. Re-smooth Trend
         trend_refined = x - x_seasonal_raw
         trend_final = self.trend_extractor_large(trend_refined)
-
-        # 5. Extract Noise
-        # Typically: Original = Trend + Seasonal + Noise
-        # Here: Seasonal is refined from residual
         seasonal_final = x_seasonal_raw
         noise = residual - seasonal_final
 
@@ -91,10 +74,6 @@ class LatentTemporalDecomposition(nn.Module):
 
 
 class ConvolutionalVariableInteraction(nn.Module):
-    """
-    Lightweight Convolution-based Interaction Mechanism with Long-term Memory.
-    Captures cross-variable dependencies using a memory matrix of size 'mem_size'.
-    """
     def __init__(self, seq_len, num_channels, kernel_size, mem_size, k_factor):
         super(ConvolutionalVariableInteraction, self).__init__()
 
@@ -158,10 +137,6 @@ class ConvolutionalVariableInteraction(nn.Module):
 
 
 class LTDBlock(nn.Module):
-    """
-    LTDBlock: The core building block of the Encoder.
-    Integrates Latent Temporal Decomposition and Variable Interaction (with Memory).
-    """
     def __init__(self, configs):
         super(LTDBlock, self).__init__()
 
